@@ -9,11 +9,11 @@
 void app_main(void) {
   esp_err_t ret;
 
-  sdmmc_card_t *card;
   const char mount_point[] = MOUNT_POINT;
+  sdmmc_card_t *card;
   sdmmc_host_t host = SDSPI_HOST_DEFAULT();
 
-  datalogger_init(card, mount_point, &host);
+  datalogger_init(&card, &host, mount_point);
   sdmmc_card_print_info(stdout, card);
 
   const char *car_data = MOUNT_POINT "/car_data.csv";
@@ -24,4 +24,6 @@ void app_main(void) {
   if (ret != ESP_OK) {
     return;
   }
+
+  datalogger_deinit(&card, &host, mount_point);
 }

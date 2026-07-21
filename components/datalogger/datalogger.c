@@ -1,5 +1,4 @@
 #include "datalogger.h"
-#include "driver/sdspi_common.h"
 #include "driver/sdspi_host.h"
 #include "esp_err.h"
 #include "esp_log.h"
@@ -20,8 +19,8 @@ static const char *TAG = "datalogger";
 #define PIN_NUM_CLK CONFIG_PIN_CLK
 #define PIN_NUM_CS CONFIG_PIN_CS
 
-esp_err_t datalogger_init(sdmmc_card_t *card, const char *mount_point,
-                          sdmmc_host_t *host) {
+esp_err_t datalogger_init(sdmmc_card_t **card, sdmmc_host_t *host,
+                          const char *mount_point) {
   esp_err_t ret;
 
   esp_vfs_fat_sdmmc_mount_config_t mount_config = {
@@ -59,7 +58,7 @@ esp_err_t datalogger_init(sdmmc_card_t *card, const char *mount_point,
 
   ESP_LOGI(TAG, "Montando o sistema de arquivos");
   ret = esp_vfs_fat_sdspi_mount(mount_point, host, &slot_config, &mount_config,
-                                &card);
+                                card);
   if (ret != ESP_OK) {
     if (ret == ESP_FAIL) {
       ESP_LOGE(TAG, "Falha ao montar sistema de arquivos. "
@@ -75,13 +74,14 @@ esp_err_t datalogger_init(sdmmc_card_t *card, const char *mount_point,
     return ret;
   }
   ESP_LOGI(TAG, "Montagem do sistema de arquivos concluída");
+  return ESP_OK;
 }
 
-esp_err_t datalogger_deinit(const char *mount_point, sdmmc_card_t *card,
-                            const sdmmc_host_t *host) {
+esp_err_t datalogger_deinit(sdmmc_card_t **card, const sdmmc_host_t *host,
+                            const char *mount_point) {
   esp_err_t ret;
   // All done, unmount partition and disable SPI peripheral
-  ret = esp_vfs_fat_sdcard_unmount(mount_point, card);
+  ret = esp_vfs_fat_sdcard_unmount(mount_point, *card);
   if (ret != ESP_OK) {
     if (ret == ESP_ERR_INVALID_ARG) {
       ESP_LOGE(TAG, "card argument is unregistered");
@@ -120,5 +120,3 @@ esp_err_t datalogger_append_to_file(const char *path, char *data) {
 
   return ESP_OK;
 }
-
-void app_main(void) {}
