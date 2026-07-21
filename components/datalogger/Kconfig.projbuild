@@ -1,0 +1,35 @@
+menu "Configurações do módulo de cartão SD SPI"
+
+    config MOUNT_POINT
+        string "Ponto de montagem (mount point)"
+        default "/sdcard"
+
+    config FORMAT_IF_MOUNT_FAILED
+        bool "Formatar o cartão se a montagem falhar"
+        default n
+        help
+            If this config item is set, format_if_mount_failed will be set to true and the card will be formatted if
+            the mount has failed.
+
+    config FORMAT_SD_CARD
+        bool "Formatar o cartão"
+        default n
+        help
+            If this config item is set, the card will be formatted as a part of the example.
+
+	config PIN_CLK
+		int "Número do pino GPIO CLK"
+		default 18
+
+	config PIN_CS
+		int "Número do pino GPIO CS"
+		default 5
+
+	config PIN_MISO
+		int "Número do pino GPIO MISO"
+		default 19
+
+	config PIN_MOSI
+		int "Número do pino GPIO MOSI"
+		default 23
+endmenu
