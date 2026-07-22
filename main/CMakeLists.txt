@@ -3,4 +3,6 @@ idf_component_register(
         "main.c"
     INCLUDE_DIRS
         "."
+    REQUIRES
+        esp_timer
 )
