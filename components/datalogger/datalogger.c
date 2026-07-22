@@ -8,11 +8,7 @@
 #include <sys/stat.h>
 #include <sys/unistd.h>
 
-#define MAX_CHAR_SIZE 64
-
 static const char *TAG = "datalogger";
-
-#define MOUNT_POINT "/sdcard"
 
 #define PIN_NUM_MISO CONFIG_PIN_MISO
 #define PIN_NUM_MOSI CONFIG_PIN_MOSI
