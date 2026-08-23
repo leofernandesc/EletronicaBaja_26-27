@@ -1,0 +1,82 @@
+menu "Configurações do módulo GPS (NMEA)"
+
+    config NMEA_PARSER_UART_RXD
+        int "Pino GPIO de RX do GPS"
+        default 34 
+        help
+            Pino de entrada usado para receber os dados NMEA do módulo GPS.
+            GPIO34 é input-only no ESP32, evitando conflito com pinos de saída, antes estava default GPIO5, dando conflito.
+
+    config NMEA_PARSER_RING_BUFFER_SIZE
+        int "Tamanho do buffer circular da UART"
+        default 1024
+
+    config NMEA_PARSER_TASK_STACK_SIZE
+        int "Tamanho da stack da task do parser GPS"
+        default 3072
+
+    config NMEA_PARSER_TASK_PRIORITY
+        int "Prioridade da task do parser GPS"
+        default 2
+
+    menu "Sentenças NMEA suportadas"
+        config NMEA_STATEMENT_GGA
+            bool "GGA"
+            default n
+            help
+                Enabling this option will parse the following parameter from GGA statement:
+
+                - Latitude, Longitude, Altitude;
+                - Number of satellites in use, fix status (no fix, GPS, DGPS), UTC time;
+
+        config NMEA_STATEMENT_GSA
+            bool "GSA"
+            default n
+            help
+                Enabling this option will parse the following parameter from GSA statement:
+
+                - Position/Vertical/Horizontal dilution of precision;
+                - Fix mode (no fix, 2D, 3D fix);
+                - IDs of satellites in use;
+
+        config NMEA_STATEMENT_GSV
+            bool "GSV"
+            default n
+            help
+                Enabling this option will parse the following parameter from GSV statement:
+
+                - Number of satellites in view;
+                - Optional details of each satellite in view;
+
+        config NMEA_STATEMENT_RMC
+            bool "RMC"
+            default y
+            help
+                Enabling this option will parse the following parameter from RMC statement:
+
+                - Validity of GPS signal;
+                - Ground speed (knots) and course over ground (degrees);
+                - Magnetic variation;
+                - UTC date;
+
+        config NMEA_STATEMENT_GLL
+            bool "GLL"
+            default n
+            help
+                Enabling this option will parse the following parameter from GLL statement:
+
+                - Latitude, Longitude;
+                - UTC time;
+
+        config NMEA_STATEMENT_VTG
+            bool "VTG"
+            default n
+            help
+                Enabling this option will parse the following parameter from VTG statement:
+
+                - Ground speed (knots, km/h) and course over ground (degrees);
+                - Magnetic variation;
+                
+    endmenu
+
+endmenu

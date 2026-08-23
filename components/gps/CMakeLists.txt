@@ -1,10 +1,9 @@
 idf_component_register(
     SRCS
-        "main.c"
+        "gps.c"
     INCLUDE_DIRS
         "."
     REQUIRES
-        datalogger
-        gps
-        esp_timer
+        esp_driver_uart
+        esp_event
 )
