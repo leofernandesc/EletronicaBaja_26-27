@@ -1,5 +1,5 @@
 #include "datalogger.h"
-#include "nmea_parser.h"
+#include "gps.h"
 #include "driver/sdspi_host.h"
 #include "esp_err.h"
 #include "esp_timer.h"
