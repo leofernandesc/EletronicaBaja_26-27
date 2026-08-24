@@ -89,5 +89,12 @@ void app_main(void) {
     return;
   }
 
+  vTaskDelay(10000 / portTICK_PERIOD_MS); // Teste para funcionamento do GPS durante 10 segundos, não seria necessário para ele funcionar continuamente
+
+  /* unregister event handler */
+  nmea_parser_remove_handler(nmea_hdl, gps_event_handler);
+  /* deinit NMEA parser library */
+  nmea_parser_deinit(nmea_hdl);
+
   datalogger_deinit(&card, &host, mount_point);
 }
