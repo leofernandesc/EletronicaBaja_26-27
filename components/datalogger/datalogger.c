@@ -103,8 +103,8 @@ esp_err_t datalogger_deinit(sdmmc_card_t **card, const sdmmc_host_t *host,
   return ESP_OK;
 }
 
-esp_err_t datalogger_append_to_file(const char *path, char *data) {
-  ESP_LOGI(TAG, "Abrindo arquivo %s", path);
+esp_err_t datalogger_append_to_file(const char *path, const char *data) {
+  ESP_LOGD(TAG, "Abrindo arquivo %s", path);
   FILE *f = fopen(path, "a");
   if (f == NULL) {
     ESP_LOGE(TAG, "Falha ao abrir arquivo para inserção");
@@ -112,7 +112,7 @@ esp_err_t datalogger_append_to_file(const char *path, char *data) {
   }
   fprintf(f, "%s", data);
   fclose(f);
-  ESP_LOGI(TAG, "Inserção no arquivo concluída");
+  ESP_LOGD(TAG, "Inserção no arquivo concluída");
 
   return ESP_OK;
 }
