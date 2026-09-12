@@ -2,7 +2,7 @@ menu "Configurações do módulo GPS (NMEA)"
 
     config NMEA_PARSER_UART_RXD
         int "Pino GPIO de RX do GPS"
-        default 34 
+        default 16
         help
             Pino de entrada usado para receber os dados NMEA do módulo GPS.
             GPIO34 é input-only no ESP32, evitando conflito com pinos de saída, antes estava default GPIO5, dando conflito.
@@ -29,7 +29,7 @@ menu "Configurações do módulo GPS (NMEA)"
     menu "Sentenças NMEA suportadas"
         config NMEA_STATEMENT_GGA
             bool "GGA"
-            default n
+            default y
             help
                 Enabling this option will parse the following parameter from GGA statement:
 
@@ -38,7 +38,7 @@ menu "Configurações do módulo GPS (NMEA)"
 
         config NMEA_STATEMENT_GSA
             bool "GSA"
-            default n
+            default y
             help
                 Enabling this option will parse the following parameter from GSA statement:
 
@@ -48,7 +48,7 @@ menu "Configurações do módulo GPS (NMEA)"
 
         config NMEA_STATEMENT_GSV
             bool "GSV"
-            default n
+            default y
             help
                 Enabling this option will parse the following parameter from GSV statement:
 
@@ -68,7 +68,7 @@ menu "Configurações do módulo GPS (NMEA)"
 
         config NMEA_STATEMENT_GLL
             bool "GLL"
-            default n
+            default y
             help
                 Enabling this option will parse the following parameter from GLL statement:
 
@@ -77,7 +77,7 @@ menu "Configurações do módulo GPS (NMEA)"
 
         config NMEA_STATEMENT_VTG
             bool "VTG"
-            default n
+            default y
             help
                 Enabling this option will parse the following parameter from VTG statement:
 

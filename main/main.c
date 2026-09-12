@@ -1,45 +1,44 @@
 #include "datalogger.h"
-#include "gps.h"
 #include "driver/sdspi_host.h"
 #include "esp_err.h"
+#include "esp_log.h"
 #include "esp_timer.h"
-#include "sdmmc_cmd.h"
-#include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_log.h"
+#include "gps.h"
+#include "sdmmc_cmd.h"
+#include <stdio.h>
 
-
-#define MAX_CHAR_SIZE 64
+#define MAX_CHAR_SIZE 128
 #define MOUNT_POINT CONFIG_MOUNT_POINT
-#define YEAR_BASE (2000) //date in GPS starts from 2000
+#define YEAR_BASE (2000) // date in GPS starts from 2000
 
 static const char *TAG = "main";
 
-static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    gps_t *gps = NULL;
-    switch (event_id) {
-    case GPS_UPDATE:
+static void gps_event_handler(void *event_handler_arg,
+                              esp_event_base_t event_base, int32_t event_id,
+                              void *event_data) {
+  gps_t *gps = NULL;
+  switch (event_id) {
+  case GPS_UPDATE:
     char data[MAX_CHAR_SIZE];
-        gps = (gps_t *)event_data;
-        /* print information parsed from GPS statements */
-        snprintf(data, sizeof(data),
-                 "%02d:%02d:%02d,%02d/%02d/%04d,%.6f,%.6f,%.2f,%.2f,%d\n",
-                 gps->tim.hour, gps->tim.minute, gps->tim.second,
-                 gps->date.day, gps->date.month, gps->date.year + YEAR_BASE,
-                 gps->latitude, gps->longitude,
-                 gps->altitude, gps->speed
-                 gps->valid);
-        datalogger_append_to_file(MOUNT_POINT "/gps_data.csv", data);
-        break;
-    case GPS_UNKNOWN:
-        /* print unknown statements */
-        ESP_LOGW(TAG, "Sentença NMEA desconhecida recebida:%s", (char *)event_data);
-        break;
-    default:
-        break;
-    }
+    gps = (gps_t *)event_data;
+    /* print information parsed from GPS statements */
+    snprintf(data, sizeof(data),
+             "%02d:%02d:%02d,%02d/%02d/%04d,%.6f,%.6f,%.2f,%.2f,%d\n",
+             gps->tim.hour, gps->tim.minute, gps->tim.second, gps->date.day,
+             gps->date.month, gps->date.year + YEAR_BASE, gps->latitude,
+             gps->longitude, gps->altitude, gps->speed, gps->valid);
+    datalogger_append_to_file(MOUNT_POINT "/gps_data.csv", data);
+    ESP_LOGI(TAG, "gps data:%s", data);
+    break;
+  case GPS_UNKNOWN:
+    /* print unknown statements */
+    ESP_LOGW(TAG, "Sentença NMEA desconhecida recebida:%s", (char *)event_data);
+    break;
+  default:
+    break;
+  }
 }
 
 void app_main(void) {
@@ -62,8 +61,9 @@ void app_main(void) {
   if (ret != ESP_OK) {
     return;
   }
-  snprintf(header, MAX_CHAR_SIZE,
-           "hora_utc,data,latitude,longitude,altitude_m,velocidade_mps,valido\n");
+  snprintf(
+      header, MAX_CHAR_SIZE,
+      "hora_utc,data,latitude,longitude,altitude_m,velocidade_mps,valido\n");
   ret = datalogger_append_to_file(gps_data, header);
   if (ret != ESP_OK) {
     return;
@@ -80,7 +80,7 @@ void app_main(void) {
 
   // Tratamento dos dados mockados
 
-  char data[MAX_CHAR_SIZE]; 
+  char data[MAX_CHAR_SIZE];
   snprintf(data, MAX_CHAR_SIZE, "%lld,%d,%.2f,%.2f,%.2f,%.2f\n",
            esp_timer_get_time() / 1000000, 2500, 20.00, 20.00, 1000.00,
            1000.00);
@@ -89,7 +89,10 @@ void app_main(void) {
     return;
   }
 
-  vTaskDelay(10000 / portTICK_PERIOD_MS); // Teste para funcionamento do GPS durante 10 segundos, não seria necessário para ele funcionar continuamente
+  vTaskDelay(10000 /
+             portTICK_PERIOD_MS); // Teste para funcionamento do GPS durante 10
+                                  // segundos, não seria necessário para ele
+                                  // funcionar continuamente
 
   /* unregister event handler */
   nmea_parser_remove_handler(nmea_hdl, gps_event_handler);
