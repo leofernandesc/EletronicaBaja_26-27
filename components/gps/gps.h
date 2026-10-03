@@ -113,10 +113,19 @@ typedef struct {
                                                         satellites in view */
   gps_date_t date;                                   /*!< Fix date */
   bool valid;                                        /*!< GPS validity */
+  bool time_valid;
+  bool date_valid;
+  bool altitude_valid;                               /*!< Fresh GGA altitude */
+  bool speed_valid;
   float speed;     /*!< Ground speed, unit: m/s */
   float cog;       /*!< Course over ground */
   float variation; /*!< Magnetic variation */
 } gps_t;
+
+typedef struct {
+  uint32_t dropped_events;
+  uint32_t input_errors;
+} nmea_parser_stats_t;
 
 /**
  * @brief Configuration of NMEA Parser
@@ -169,6 +178,9 @@ typedef enum {
  * @return nmea_parser_handle_t handle of NMEA parser
  */
 nmea_parser_handle_t nmea_parser_init(const nmea_parser_config_t *config);
+
+void nmea_parser_get_stats(nmea_parser_handle_t nmea_hdl,
+                           nmea_parser_stats_t *stats);
 
 /**
  * @brief Deinit NMEA Parser

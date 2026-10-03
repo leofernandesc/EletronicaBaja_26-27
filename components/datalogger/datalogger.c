@@ -5,6 +5,8 @@
 #include "esp_vfs_fat.h"
 #include "sd_protocol_types.h"
 #include <stdio.h>
+#include <errno.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/unistd.h>
 
@@ -18,13 +20,10 @@ static const char *TAG = "datalogger";
 esp_err_t datalogger_init(sdmmc_card_t **card, sdmmc_host_t *host,
                           const char *mount_point) {
   esp_err_t ret;
+  *card = NULL;
 
   esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-#ifdef CONFIG_FORMAT_IF_MOUNT_FAILED
-      .format_if_mount_failed = true,
-#else
       .format_if_mount_failed = false,
-#endif // FORMAT_IF_MOUNT_FAILED
       .max_files = 5,
       .allocation_unit_size = 16 * 1024};
   ESP_LOGI(TAG, "Inicializando cartão SD");
@@ -57,9 +56,7 @@ esp_err_t datalogger_init(sdmmc_card_t **card, sdmmc_host_t *host,
                                 card);
   if (ret != ESP_OK) {
     if (ret == ESP_FAIL) {
-      ESP_LOGE(TAG, "Falha ao montar sistema de arquivos. "
-                    "Se quiser que o cartão SD seja formatado, defina a"
-                    "opção CONFIG_FORMAT_IF_MOUNT_FAILED no menuconfig.");
+      ESP_LOGE(TAG, "Falha ao montar sistema de arquivos; dados preservados.");
     } else {
       ESP_LOGE(
           TAG,
@@ -67,6 +64,8 @@ esp_err_t datalogger_init(sdmmc_card_t **card, sdmmc_host_t *host,
           "Verifique se os pinos do cartão SD estão com os resistores pull-up.",
           esp_err_to_name(ret));
     }
+    spi_bus_free(host->slot);
+    *card = NULL;
     return ret;
   }
   ESP_LOGI(TAG, "Montagem do sistema de arquivos concluída");
@@ -75,32 +74,16 @@ esp_err_t datalogger_init(sdmmc_card_t **card, sdmmc_host_t *host,
 
 esp_err_t datalogger_deinit(sdmmc_card_t **card, const sdmmc_host_t *host,
                             const char *mount_point) {
-  esp_err_t ret;
-  // All done, unmount partition and disable SPI peripheral
-  ret = esp_vfs_fat_sdcard_unmount(mount_point, *card);
-  if (ret != ESP_OK) {
-    if (ret == ESP_ERR_INVALID_ARG) {
-      ESP_LOGE(TAG, "card argument is unregistered");
-    } else {
-      ESP_LOGE(TAG, "esp_vfs_fat_sdmmc_mount hasn't been called");
-    }
-    return ret;
-  }
-  ESP_LOGI(TAG, "Card unmounted");
-
-  // deinitialize the bus after all devices are removed
-  ret = spi_bus_free(host->slot);
-
-  if (ret != ESP_OK) {
-    if (ret == ESP_ERR_INVALID_ARG) {
-      ESP_LOGE(TAG, "parameter is invalid");
-    } else {
-      ESP_LOGE(TAG, "bus hasn't been initialized before, or not all devices on "
-                    "the bus are freed");
-    }
-    return ret;
-  }
-  return ESP_OK;
+  if (!card || !*card) return ESP_ERR_INVALID_ARG;
+  esp_err_t unmount_err = esp_vfs_fat_sdcard_unmount(mount_point, *card);
+  // The mount helper may release card even when unregistering VFS fails.
+  *card = NULL;
+  esp_err_t bus_err = spi_bus_free(host->slot);
+  if (unmount_err != ESP_OK)
+    ESP_LOGE(TAG, "SD unmount failed: %s", esp_err_to_name(unmount_err));
+  if (bus_err != ESP_OK)
+    ESP_LOGE(TAG, "SPI bus release failed: %s", esp_err_to_name(bus_err));
+  return unmount_err != ESP_OK ? unmount_err : bus_err;
 }
 
 esp_err_t datalogger_append_to_file(const char *path, const char *data) {
@@ -110,9 +93,50 @@ esp_err_t datalogger_append_to_file(const char *path, const char *data) {
     ESP_LOGE(TAG, "Falha ao abrir arquivo para inserção");
     return ESP_FAIL;
   }
-  fprintf(f, "%s", data);
-  fclose(f);
+  bool ok = fputs(data, f) >= 0;
+  if (ok) ok = fflush(f) == 0;
+  if (ok) ok = fsync(fileno(f)) == 0;
+  if (fclose(f) != 0) ok = false;
+  if (!ok) {
+    ESP_LOGE(TAG, "Falha ao gravar %s", path);
+    return ESP_FAIL;
+  }
   ESP_LOGD(TAG, "Inserção no arquivo concluída");
 
   return ESP_OK;
+}
+
+esp_err_t datalogger_prepare_file(const char *path, const char *header,
+                                  bool *trimmed_tail) {
+  *trimmed_tail = false;
+  FILE *f = fopen(path, "r+");
+  if (!f && errno == ENOENT) return datalogger_append_to_file(path, header);
+  if (!f) return ESP_FAIL;
+  if (fseek(f, 0, SEEK_END) != 0) goto fail;
+  long size = ftell(f);
+  if (size < 0) goto fail;
+  if (size == 0) {
+    if (fclose(f) != 0) return ESP_FAIL;
+    return datalogger_append_to_file(path, header);
+  }
+  if (fseek(f, size - 1, SEEK_SET) != 0) goto fail;
+  if (fgetc(f) != '\n') {
+    long keep = size - 1;
+    while (keep > 0) {
+      if (fseek(f, keep - 1, SEEK_SET) != 0) goto fail;
+      if (fgetc(f) == '\n') break;
+      keep--;
+    }
+    if (ftruncate(fileno(f), keep) != 0) goto fail;
+    if (fsync(fileno(f)) != 0) goto fail;
+    *trimmed_tail = true;
+    if (keep == 0) {
+      if (fclose(f) != 0) return ESP_FAIL;
+      return datalogger_append_to_file(path, header);
+    }
+  }
+  return fclose(f) == 0 ? ESP_OK : ESP_FAIL;
+fail:
+  fclose(f);
+  return ESP_FAIL;
 }
