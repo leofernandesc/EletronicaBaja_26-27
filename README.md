@@ -1,6 +1,6 @@
 # Eletrônica Baja UEA 2026/2027
 
-Firmware ESP32 (ESP-IDF) para aquisição de GPS e registro em cartão SD. Os valores dos sensores do carro em `main/main.c` ainda são **mockados**.
+Firmware ESP32 (ESP-IDF) para aquisição de GPS, pulsos de velocidade e registro em cartão SD. RPM e pressões em `main/main.c` ainda são **mockados**. `speed1` usa o componente `speed_sensor`; `speed2` fica vazio até a integração de outro sensor.
 
 ## Compilação
 
@@ -18,6 +18,25 @@ cc -std=c11 -Wall -Wextra -Werror -Icomponents/gps \
   components/gps/nmea_frame.c tests/test_nmea_frame.c -o /tmp/test_nmea_frame
 /tmp/test_nmea_frame
 ```
+
+Teste da medição de velocidade com pulsos sintéticos:
+
+```sh
+cc -std=c11 -Wall -Wextra -Werror -Icomponents/speed_sensor \
+  components/speed_sensor/speed_measurement.c tests/test_speed_measurement.c \
+  -lm -o /tmp/test_speed_measurement
+/tmp/test_speed_measurement
+```
+
+## Sensor de velocidade
+
+O componente captura pulsos continuamente por interrupções de GPIO. `main/main.c` consulta a leitura atual a cada amostra do carro, sem esperar por pulsos. Cada instância tem GPIO, calibração, borda e temporização próprios. A API e exemplos para adicionar sensores estão em [components/speed_sensor/README.md](components/speed_sensor/README.md).
+
+Em `idf.py menuconfig`, configure **Speed sensor (first instance in main)**. O GPIO padrão é 27, a borda é de subida e o timeout sem pulsos é de 1000 ms. A distância percorrida por pulso vem **sem calibração (0)**: configure o valor em micrômetros depois de definir a montagem. Até lá, os pulsos são capturados e a velocidade fica indisponível.
+
+As colunas `speed1` e `speed2` representam **m/s**. Campo vazio significa leitura indisponível; `0.00` significa ausência de pulsos por pelo menos o timeout, com calibração configurada. A primeira leitura em movimento exige duas bordas, inclusive após uma parada. A ausência de pulsos não distingue parada de sensor desconectado.
+
+O sinal de entrada deve chegar ao ESP32 já condicionado. Pinagem, alimentação e nível de saída da unidade VW Gol G5 ainda precisam ser verificados; não há um circuito confirmado neste repositório.
 
 ## Arquivos no SD
 

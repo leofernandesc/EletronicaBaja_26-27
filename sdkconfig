@@ -764,6 +764,21 @@ CONFIG_NMEA_STATEMENT_VTG=y
 # end of Configurações do módulo GPS (NMEA)
 
 #
+# Speed sensor (first instance in main)
+#
+# default:
+CONFIG_SPEED_SENSOR_GPIO=27
+# default:
+CONFIG_SPEED_SENSOR_DISTANCE_PER_PULSE_UM=0
+# default:
+CONFIG_SPEED_SENSOR_STOP_TIMEOUT_MS=1000
+# default:
+CONFIG_SPEED_SENSOR_MIN_PULSE_INTERVAL_US=0
+# default:
+# CONFIG_SPEED_SENSOR_FALLING_EDGE is not set
+# end of Speed sensor (first instance in main)
+
+#
 # Compiler options
 #
 # default:

@@ -1,0 +1,35 @@
+menu "Speed sensor (first instance in main)"
+    config SPEED_SENSOR_GPIO
+        int "Pulse input GPIO"
+        range 0 39
+        default 27
+        help
+            Use an unassigned GPIO and an externally conditioned digital signal.
+            GPIO27 is only a software default, not a verified board connection.
+
+    config SPEED_SENSOR_DISTANCE_PER_PULSE_UM
+        int "Vehicle travel per pulse (micrometres; 0 = uncalibrated)"
+        range 0 2147483647
+        default 0
+        help
+            Wheel circumference / (sensor pulses per shaft revolution *
+            shaft revolutions per wheel revolution), expressed in micrometres.
+            Zero keeps vehicle speed unavailable while pulses are captured.
+
+    config SPEED_SENSOR_STOP_TIMEOUT_MS
+        int "No-pulse timeout before reporting zero (milliseconds)"
+        range 1 2147483647
+        default 1000
+
+    config SPEED_SENSOR_MIN_PULSE_INTERVAL_US
+        int "Reject intervals shorter than this (microseconds; 0 = disabled)"
+        range 0 2147483647
+        default 0
+        help
+            Must be smaller than the stop timeout and any legitimate pulse
+            interval at maximum speed. This is not electrical signal conditioning.
+
+    config SPEED_SENSOR_FALLING_EDGE
+        bool "Count falling edges instead of rising edges"
+        default n
+endmenu

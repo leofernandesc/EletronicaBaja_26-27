@@ -9,7 +9,9 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "gps.h"
+#include "speed_sensor.h"
 #include "sdmmc_cmd.h"
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -36,6 +38,7 @@ typedef struct {
 
 static QueueHandle_t s_log_queue;
 static nmea_parser_handle_t s_gps_handle;
+static speed_sensor_handle_t s_speed_sensor;
 static uint32_t s_boot_id;
 static uint32_t s_car_sequence;
 static uint32_t s_gps_sequence;
@@ -193,12 +196,41 @@ static void logger_task(void *arg) {
   }
 }
 
-// Replace these deliberate placeholders with the vehicle's sensor drivers.
+static void init_speed_sensor(void) {
+  speed_sensor_config_t config = SPEED_SENSOR_CONFIG_DEFAULT();
+  config.gpio = CONFIG_SPEED_SENSOR_GPIO;
+  config.distance_per_pulse_m =
+      CONFIG_SPEED_SENSOR_DISTANCE_PER_PULSE_UM / 1000000.0f;
+  config.stop_timeout_ms = CONFIG_SPEED_SENSOR_STOP_TIMEOUT_MS;
+  config.min_pulse_interval_us = CONFIG_SPEED_SENSOR_MIN_PULSE_INTERVAL_US;
+#ifdef CONFIG_SPEED_SENSOR_FALLING_EDGE
+  config.pulse_edge = GPIO_INTR_NEGEDGE;
+#endif
+  // Do not reconfigure pins owned by the GPS UART or SD SPI bus.
+  if (config.gpio == CONFIG_NMEA_PARSER_UART_RXD ||
+      config.gpio == CONFIG_PIN_CLK || config.gpio == CONFIG_PIN_CS ||
+      config.gpio == CONFIG_PIN_MISO || config.gpio == CONFIG_PIN_MOSI) {
+    ESP_LOGE(TAG, "Speed sensor GPIO conflicts with GPS/SD; speed unavailable");
+    return;
+  }
+  esp_err_t err = speed_sensor_init(&config, &s_speed_sensor);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Speed sensor unavailable: %s", esp_err_to_name(err));
+  } else if (config.distance_per_pulse_m == 0.0f) {
+    ESP_LOGW(TAG, "Speed sensor captures pulses; set distance per pulse to enable speed");
+  }
+}
+
+// RPM and pressures remain prototype placeholders; speed2 awaits its sensor.
 static void read_car_sensors(int *rpm, float *speed1, float *speed2,
                              float *pressure1, float *pressure2) {
   *rpm = 2500;
-  *speed1 = 20.00f;
-  *speed2 = 20.00f;
+  *speed1 = NAN;
+  *speed2 = NAN;
+  speed_sensor_reading_t reading;
+  if (s_speed_sensor && speed_sensor_read(s_speed_sensor, &reading) == ESP_OK &&
+      reading.available)
+    *speed1 = reading.speed_mps;
   *pressure1 = 1000.00f;
   *pressure2 = 1000.00f;
 }
@@ -209,12 +241,15 @@ static void car_task(void *arg) {
     int rpm;
     float speed1, speed2, pressure1, pressure2;
     char line[MAX_CHAR_SIZE];
+    char speed1_text[48] = "", speed2_text[48] = "";
     read_car_sensors(&rpm, &speed1, &speed2, &pressure1, &pressure2);
+    if (isfinite(speed1)) snprintf(speed1_text, sizeof(speed1_text), "%.2f", speed1);
+    if (isfinite(speed2)) snprintf(speed2_text, sizeof(speed2_text), "%.2f", speed2);
     uint32_t sequence = __atomic_add_fetch(&s_car_sequence, 1, __ATOMIC_RELAXED);
     int written = snprintf(
-        line, sizeof(line), "%08lx,%lu,%lld,%d,%.2f,%.2f,%.2f,%.2f\n",
+        line, sizeof(line), "%08lx,%lu,%lld,%d,%s,%s,%.2f,%.2f\n",
         (unsigned long)s_boot_id, (unsigned long)sequence,
-        (long long)(esp_timer_get_time() / 1000), rpm, speed1, speed2,
+        (long long)(esp_timer_get_time() / 1000), rpm, speed1_text, speed2_text,
         pressure1, pressure2);
     if (written >= 0 && written < sizeof(line))
       log_enqueue(LOG_TARGET_CAR, line);
@@ -265,6 +300,7 @@ void app_main(void) {
     ESP_LOGE(TAG, "Cannot create log queue");
     return;
   }
+  init_speed_sensor();
   if (xTaskCreate(logger_task, "sd_logger", LOGGER_TASK_STACK_SIZE, NULL,
                   LOGGER_TASK_PRIORITY, NULL) != pdPASS ||
       xTaskCreate(car_task, "car_sampler", 3072, NULL,

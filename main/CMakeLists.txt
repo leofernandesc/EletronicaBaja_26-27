@@ -6,5 +6,6 @@ idf_component_register(
     REQUIRES
         datalogger
         gps
+        speed_sensor
         esp_timer
 )
