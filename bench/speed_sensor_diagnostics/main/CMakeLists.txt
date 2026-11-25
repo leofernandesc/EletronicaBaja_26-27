@@ -1,0 +1,25 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "diagnostics.c"
+        "diag_logic.c"
+        "test_t0_boot.c"
+        "test_t1_idle.c"
+        "test_t2_logic.c"
+        "test_t3_generator.c"
+        "test_t4_sensor_static.c"
+        "test_t5_scope.c"
+        "test_t6_rotation.c"
+        "test_t7_filter.c"
+    INCLUDE_DIRS "."
+    REQUIRES
+        speed_sensor
+        esp_driver_gpio
+        esp_driver_ledc
+        esp_driver_pcnt
+        esp_timer
+        esp_system
+        esp_app_format
+        esp_hal_gpio
+        freertos
+)

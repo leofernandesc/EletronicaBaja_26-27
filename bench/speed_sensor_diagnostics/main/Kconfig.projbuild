@@ -1,0 +1,129 @@
+menu "Baja speed sensor diagnostics"
+    config DIAG_FIRMWARE_ID
+        string "Firmware identity"
+        default "BAJA_SPEED_DIAGNOSTICS_T0_T7_V3"
+
+    config DIAG_START_TEST
+        int "Test selected at boot (serial can switch T0..T7)"
+        range 0 7
+        default 0
+
+    config DIAG_INPUT_GPIO
+        int "Sensor/input GPIO"
+        range 0 39
+        default 27
+
+    config DIAG_GENERATOR_GPIO
+        int "T3 pulse generator output GPIO"
+        range 0 33
+        default 26
+
+    config DIAG_SAMPLE_INTERVAL_MS
+        int "Serial update interval (milliseconds)"
+        range 50 5000
+        default 200
+
+    config DIAG_STOP_TIMEOUT_MS
+        int "No-event timeout (milliseconds)"
+        range 1 600000
+        default 5000
+
+    config DIAG_PULSES_PER_REVOLUTION
+        int "T7 confirmed pulses per revolution"
+        range 1 1000000
+        default 1
+        help
+            This value is only used for RPM after the operator explicitly
+            confirms the pulse-to-revolution relationship with an independent
+            mechanical reference. Tooth count does not set this value.
+
+    config DIAG_FILTER_MIN_INTERVAL_US
+        int "T7 software minimum interval (0 disables filter)"
+        range 0 2147483647
+        default 0
+        help
+            Filtering starts disabled. This does not replace electrical signal
+            conditioning or scope inspection.
+
+    config DIAG_RPM_RELATIONSHIP_CONFIRMED
+        bool "Operator has independently confirmed pulses per revolution"
+        default n
+
+    choice DIAG_DEFAULT_EDGE
+        prompt "Default selected edge"
+        default DIAG_DEFAULT_EDGE_RISING
+
+        config DIAG_DEFAULT_EDGE_RISING
+            bool "Rising"
+
+        config DIAG_DEFAULT_EDGE_FALLING
+            bool "Falling"
+    endchoice
+
+    choice DIAG_INTERNAL_PULL
+        prompt "Internal pull for GPIO input modes"
+        default DIAG_PULL_NONE
+
+        config DIAG_PULL_NONE
+            bool "Disabled (external conditioning required)"
+
+        config DIAG_PULL_DOWN
+            bool "Pull-down"
+
+        config DIAG_PULL_UP
+            bool "Pull-up"
+    endchoice
+
+    choice DIAG_GENERATOR_FREQUENCY
+        prompt "T3 default generator frequency"
+        default DIAG_GENERATOR_10HZ
+
+        config DIAG_GENERATOR_1HZ
+            bool "1 Hz"
+
+        config DIAG_GENERATOR_5HZ
+            bool "5 Hz"
+
+        config DIAG_GENERATOR_10HZ
+            bool "10 Hz"
+
+        config DIAG_GENERATOR_20HZ
+            bool "20 Hz"
+
+        config DIAG_GENERATOR_100HZ
+            bool "100 Hz"
+
+        config DIAG_GENERATOR_500HZ
+            bool "500 Hz"
+
+        config DIAG_GENERATOR_1000HZ
+            bool "1000 Hz"
+    endchoice
+
+    config DIAG_T3_USE_SPEED_SENSOR_DRIVER
+        bool "T3 use original speed_sensor driver (serial can switch backend)"
+        default n
+        help
+            T3 starts with either the diagnostic ISR capture or the extracted
+            speed_sensor driver. The two backends never own the input GPIO at
+            the same time. Use CAPTURE DIAG or CAPTURE DRIVER over serial.
+
+    config DIAG_T4_RAPID_EDGE_WARNING_US
+        int "T4 rapid-transition warning threshold (microseconds)"
+        range 1 1000000
+        default 1000
+
+    config DIAG_T7_ENABLE_PCNT
+        bool "Run PCNT hardware counter in parallel during T7"
+        default y
+        help
+            PCNT uses the same selected edge with its hardware glitch filter
+            disabled by default. It is an independent count comparison, not a
+            replacement for the GPIO ISR timestamp capture.
+
+    config DIAG_T7_PCNT_GLITCH_FILTER_NS
+        int "Optional PCNT hardware glitch filter (nanoseconds; 0 disables)"
+        range 0 13000
+        default 0
+        depends on DIAG_T7_ENABLE_PCNT
+endmenu
